@@ -1,0 +1,346 @@
+\documentclass[a4paper]{article}
+%\VignetteEngine{knitr::knitr}
+%\VignetteIndexEntry{Effect of Post-Mortem Interval on the Biochemical Quality of Blood in Wild Boar (Sus scrofa)}
+%\VignetteDepends{knitr,ggplot2,dplyr,tibble,gridExtra,ade4}
+\usepackage{fancyvrb}
+\usepackage{color}
+\usepackage{url}
+\usepackage{amsfonts}
+%\usepackage{pdfcolmk}
+\usepackage{epsfig}
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue,citecolor=blue]{hyperref}
+%\usepackage{longtable}
+\usepackage{natbib}
+\usepackage{ucs}
+\usepackage{savesym}
+\savesymbol{iint}
+\savesymbol{iiint}
+\usepackage{amsmath}
+%\usepackage{rotating}
+\usepackage[title,titletoc]{appendix}
+%\usepackage[utf8]{inputenc}
+\newlength{\defaultparindent}
+\setlength{\defaultparindent}{\parindent}
+\newenvironment{Default Paragraph Font}{}{}
+\newcommand{\INT}[1]{\stackrel{\circ}{#1}}
+\topmargin -1.5cm
+\headheight 0.5cm
+\headsep 1.0cm
+\topskip 0.5cm
+\textheight 24.5cm
+\footskip 1.0cm
+\oddsidemargin 0.0cm
+\evensidemargin 0.0cm
+\textwidth 16cm
+\parskip 0.2cm
+\parindent 1.0cm
+\baselineskip 0.2cm
+
+
+\title{Appendix of the article: Effect of Post-Mortem Interval on the Biochemical Quality of Blood in Wild Boar (\textit{Sus scrofa}).}
+\author{Sylvain Larrat, Beno\^{i}t Rannou, L\'{e}a Bonin, Karin
+  Lemberger, Julie
+  Tucoulet,\\  Ariane Payne, Cl\'{e}ment Calenge \& Anouk Decors.}  \date{}
+\setlength{\parindent}{0cm}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+  
+<<setup, include=FALSE, cache=FALSE>>=
+# set global chunk options
+library('knitr')
+opts_chunk$set(fig.path="wapat-",
+               fig.align="center",
+               fig.show="hold",
+               echo=TRUE,
+               results="markup",
+               fig.width=10,
+               fig.height=10, out.width='\\linewidth',
+               out.height='\\linewidth',
+               cache=FALSE,
+               dev='png',
+               concordance=TRUE,
+               error=FALSE)
+opts_knit$set(aliases = c(h = 'fig.height',
+              w = 'fig.width',
+              wo='out.width',
+              ho='out.height'))
+options(replace.assign=TRUE,width=60)
+set.seed(9567)
+@
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%                                                            %%%%
+%%%%                  The vignette starts here                  %%%%
+%%%%                                                            %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newpage
+
+\section{Introduction}
+
+
+This vignette corresponds to the appendix of the article of
+\citet{Larrat2024}. The aim of this paper is to explore how the blood
+biochemistry of a wild boar varies with time after its death, based on
+a sample of 20 animals. As this is a small sample and we have a lot of
+parameters (15 parameters), there is a risk of identifying spurious
+patterns through univariate analyses. We therefore opt for an
+exploratory analysis to identify how the overall composition of the
+blood changes over time. We use multivariate analysis to derive an
+indicator of blood composition that summarizes the maximum variation
+in the composition. The study of the changes over time of this
+indicator provides insights into the dynamics of post-mortem changes
+in blood biochemical composition. This can provide clues to field
+workers regarding the optimal timing for blood collection to allow
+further investigations into the cause of death without being affected
+by these changes.\\
+
+A companion package named \texttt{QBloodWB} contains the data and
+functions used for this paper, and is required to reproduce the
+calculations in this document. The present document is also available
+as a vignette of this package. To install this package, first install
+the package \texttt{devtools} and use the function
+\texttt{install\_github} to install \texttt{wapat}:
+
+<<eval=FALSE>>=
+## If devtools is not yet installed, type
+install.packages("devtools")
+
+## Install the package badgertub
+devtools::install_github("ClementCalenge/QBloodWB", ref="main")
+@ 
+
+\textit{Remark}: on Windows, it is required to also install the Rtools
+(\url{https://cran.r-project.org/bin/windows/Rtools/}) on your
+computer to have a working \texttt{devtools} package (see
+\url{https://www.r-project.org/nosvn/pandoc/devtools.html}).\\
+
+Throughout this vignette, we suppose that the reader is familiar with
+the analysis carried out in the main paper.\\
+
+
+\section{R code used to fit the model}
+\label{sec:r-code-used}
+
+We now describe the R code used in the paper.
+
+\subsection{The data}
+\label{sec:the-data}
+
+We load the package containing the code and data:
+
+<<load-QBloodWB>>=
+library(QBloodWB)
+@ 
+
+And then, we load the dataset:
+
+<<load-dataset>>=
+data(bloodWB)
+str(bloodWB)
+@
+
+The dataset \texttt{bloodWB} is a data.frame containing data on the
+biochemistry of the blood of 20 wild boar. The help page of this
+dataset describes the different variables in this data.frame.\\
+
+We first extract the first 15 variables, which pertain only to the
+biochemistry of the the blood of the 20 animals, as well as the time
+elapsed since the death of the animals:
+
+<<extract-data-of-interest>>=
+a <- bloodWB[,1:15]
+time <- bloodWB$TimeSinceColl
+@ 
+
+
+\subsection{Principal component analysis}
+
+We first carry out a principal component analysis (PCA) of the
+dataset. This analysis identifies linear combinations of the
+biochemical parameters (i.e., a sort of weighted average of these
+parameters), named principal components, each principal component
+attributing a ``score'' to each animal. The first principal components
+returned by the analysis have the property to capture the largest
+proportion of variance in the dataset. In other words, each principal
+component is a summary indicator of the blood composition that is
+highly correlated with the biochemical parameters of interest.\\
+
+We use the function \texttt{dudi.pca} of the package \textbf{ade4} to
+carry out this analysis:
+
+<<first-pca, fig.width=12, fig.height=6, out.width='\\linewidth', out.height='0.5\\linewidth'>>=
+library(ade4)
+pc0 <- dudi.pca(a, scannf=FALSE)
+par(mfrow=c(1,2))
+barplot(pc0$eig, main="Eigenvalues")
+s.label(pc0$li)
+@ 
+
+The left plot shows the screeplot of this analysis: it is proportional
+to the proportion of variance explained by the successive principal
+components of the analysis (eigenvalues). The first eigenvalue is much
+larger than the following ones, indicating that the first principal
+component summarizes most of the common structure in the
+dataset.\\
+
+The right plot shows the scores of the wild boars on the first
+factorial plane of this analysis (x-axis = first principal component;
+y-axis = second component). Note that the wild boar number 19 strongly
+attracts the first principal component of the PCA. We therefore carry
+out again this analysis without this animal and project this animal as
+supplementary row in this analysis, to avoid this ``leverage
+effect''. The results corresponds to Fig. 1 of the paper:
+
+<<second-pca, fig.width=3.93, fig.height=9.84, out.width='0.4\\linewidth', out.height='\\linewidth'>>=
+## Remove WB #19
+ab <- a[-19,]
+
+## Carries out the PCA
+pc <- dudi.pca(ab, scan=FALSE)
+
+## adds WB 19 as supplementary individual, and insert it in the results:
+pc$li <- rbind(pc$li[-19,],suprow(pc, a[19,])$lisup[1,1],
+               pc$li[19,,drop=FALSE])
+
+## Load the packages to allow the plot
+library(ggplot2)
+library(gridExtra)
+
+## The segmented regression (threshold set at 2)
+axis1 <- pc$li[,1]
+re <- (time>2)*time
+mod1 <- lm(axis1~re)
+
+## First plot (screeplot)
+df <- data.frame(noval=1:length(pc$eig),Eig=pc$eig)
+gra <- ggplot(df)+geom_bar(aes(x=noval,y=Eig), stat="Identity")+
+    xlab("Axes of the PCA")+ylab("Eigenvalues")+
+    ggtitle("(A)")+
+    theme(axis.text.x=element_blank(),
+          axis.ticks.x=element_blank())+
+    theme(plot.title = element_text(face="bold",hjust=1))
+df2 <- pc$li  |> dplyr::mutate(Time=time)
+df3 <- pc$co  |> tibble::rownames_to_column()  |>
+dplyr::arrange(dplyr::desc(Comp1))
+df3$rowname <- factor(df3$rowname, levels=df3$rowname)
+grb <- ggplot(df3)+geom_point(aes(x=Comp1, y=rowname))+
+    geom_vline(xintercept = 0)+xlab("Correlation with the first component of the PCA")+
+    ylab("Biochemical Parameters")+xlim(-1,1)+ggtitle("(B)")+
+    theme(plot.title = element_text(face="bold",hjust=1))
+grc <- ggplot(df2)+geom_segment(aes(x = 0, y = coefficients(mod1)[1],
+                                    xend = 2, yend = coefficients(mod1)[1]),
+                                colour="#F8766D", size=1.5)+
+    geom_segment(aes(x = 2, y = coefficients(mod1)[1],
+                     xend = 6,
+                     yend = coefficients(mod1)[1]+coefficients(mod1)[2]*6),
+                 colour="#F8766D", linewidth=1.5, alpha=0.8)+
+    geom_point(aes(Time, Axis1))+xlab("Time after death")+
+    ylab("Score on the first axis of the PCA")+ggtitle("(C)")+
+    theme(plot.title = element_text(face="bold",hjust=1))+
+    NULL
+grid.arrange(gra, grb, grc, ncol=1)
+@ 
+
+The first plot is the screeplot of this new PCA. The second plot gives
+the correlation of the biochemical parameters with the first principal
+components of this PCA. This plot allows to give a biological meaning
+to this summary indicator. Although caution is needed in interpreting
+these results (due to the small sample size), these correlations
+demonstrate that this indicator provides a reasonable summary of the
+biological process underlying post-mortem biochemical changes (see
+main text).\\
+
+Finally, the last plot shows how the scores of the animals changes
+with the time elapsed since death. We added on this plot the segmented
+regression model with a threshold set at t = 2 hours. Note that the
+proportion of inertia expressed by the first axis is equal to:
+
+<<>>=
+(su <- round(100*pc$eig[1]/sum(pc$eig)))
+@ 
+
+\Sexpr{su}\% of the inertia. The first component therefore explains an
+important pattern in the data.
+
+
+\subsection{Segmented regression}
+
+We have added the segmented regression describing how the scores of
+the wild boar on the first principal component of the PCA varies with
+time since death on the previous plot. We now demonstrate that a
+threshold at t = 2 hours is optimal. First, we can calculate the
+residual sum of squares associated to a segmented model characterized
+by different thresholds. We use the function \texttt{rssSRCuts} of the
+package for that:
+
+<<rss-different-thresholds, fig.width=5, fig.height=5, out.width='0.5\\linewidth', out.height='0.5\\linewidth'>>=
+ssr <- rssSRCuts(time, axis1, cutlim=c(0,5))
+plot(c(0:5), ssr, ty="l", ylim=range(ssr),
+     xlab="Threshold",
+     ylab="Residual sum of squares")
+@ 
+
+The residual sum of square is minimal for t = 2 hours. Note that there
+is not a strong difference between the segmented regression with a
+threshold set at 2 hours and a classical linear regression:
+
+<<two-models-segmented-unsegmented>>=
+## Segmented regression
+segtime <- (time>2)*time
+mod1 <- lm(axis1~segtime)
+## Classical regression
+mod2 <- lm(axis1~time)
+
+summary(mod1)
+summary(mod2)
+@ 
+
+As indicated in the paper, the R-squared is equal to 0.47 for the
+segmented regression and 0.46 for the classical regression. The use of
+the function \texttt{anova} allows the calculation of the residual sum
+of squares (RSS) for the two model)
+
+<<anova-segmented-unsegmented>>=
+anova(mod2,mod1)
+@ 
+
+Finally, we use the boostrap approach described in the main paper and
+estimate the proportion of the boostrap samples for which a threshold
+of t = 2 hours is optimal. This boostrap approach is implemented in
+the function \texttt{bootSR} of the package (see the help page of this
+function. We
+
+<<bootstrap-threshold-choice>>=
+set.seed(777) ## for reproducibility
+
+bootSR(time, axis1, cutlim=c(1,4), nBoot=1000)
+@ 
+
+A threshold set at two hours is optimal for 83\% of the bootstrap samples.
+
+
+
+
+
+\begin{thebibliography}{3}
+\providecommand{\natexlab}[1]{#1}
+
+\bibitem[{Larrat et~al.(2024)}]{Larrat2024}
+Larrat, S. et~al. 2024.
+\newblock Effect of Post-Mortem Interval on the Biochemical Quality of Blood in Wild Boars (Sus scrofa).
+\newblock -- in prep.
+
+\end{thebibliography}
+
+
+\end{document}

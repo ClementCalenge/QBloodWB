@@ -1,0 +1,15 @@
+Package: QBloodWB
+Type: Package
+Title: Effect of Post-Mortem Interval on the Biochemical Quality of Blood in Wild Boar
+Version: 1.0
+Date: 2024-07-29
+Author: Clement Calenge <clement.calenge@ofb.gouv.fr>
+Maintainer: Clement Calenge <clement.calenge@ofb.gouv.fr>
+Depends: R (>= 4.0.0)
+Imports: stats
+Suggests: ade4, ggplot2, tibble, dplyr, gridExtra, knitr
+Description: Data and analysis for the paper by Larrat et al. exploring how the quality of wild boar blood changes over time.
+VignetteBuilder: knitr
+License: GPL (>= 2)
+NeedsCompilation: no
+
